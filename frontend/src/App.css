@@ -1,76 +1,233 @@
+/* Global Styles */
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background-color: #f4f7f9;
     color: #333;
     margin: 0;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
 }
 
 #root {
-    width: 100%;
-    max-width: 600px;
+    height: 100vh;
 }
 
-.App {
-    text-align: center;
+/* Explorer Layout */
+.explorer-container {
+    display: flex;
+    height: 100%;
 }
 
-h1 {
+.explorer-left-panel {
+    width: 350px;
+    flex-shrink: 0;
+    background-color: #fff;
+    border-right: 1px solid #ddd;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.explorer-right-panel {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* Search List Component */
+.search-list-container h2 {
+    margin-top: 0;
     color: #1a2a4c;
 }
 
 .search-container {
-    margin: 20px 0;
     display: flex;
-    gap: 10px;
+    gap: 5px;
+    margin-bottom: 20px;
 }
 
-#bungieNameInput {
+#weaponNameInput {
     flex-grow: 1;
-    padding: 10px;
+    padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 #searchButton {
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 8px 12px;
+    font-size: 14px;
     color: #fff;
     background-color: #007bff;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s;
 }
 
-#searchButton:hover {
-    background-color: #0056b3;
+.results-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-#searchButton:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
+.item-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    border-radius: 8px;
 }
 
-.message-container {
-    margin-top: 20px;
+.item-card-link.active .item-card {
+    background-color: #e9f5ff;
+    border-color: #007bff;
+}
+
+.item-card {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.item-card:hover {
+    border-color: #999;
+}
+
+.item-icon {
+    width: 48px;
+    height: 48px;
+}
+
+.item-name {
+    font-weight: bold;
+    font-size: 15px;
+    margin: 0;
+}
+
+.item-type {
+    font-size: 13px;
+    color: #666;
+    margin: 2px 0 0 0;
+}
+
+/* Detail Page & Placeholder */
+.detail-placeholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: #888;
+    font-size: 18px;
+}
+
+.detail-page {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.detail-header {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-icon {
+    width: 96px;
+    height: 96px;
+}
+
+.detail-title h1 {
+    margin: 0;
+}
+.detail-title p {
+    margin: 5px 0 0 0;
     font-size: 18px;
     color: #555;
 }
 
-.user-card {
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 15px;
-    text-align: left;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.detail-flavor-text {
+    margin: 20px 0;
 }
 
-.user-card p {
-    margin: 5px 0;
+.stats-container h2 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.stats-container ul {
+    list-style: none;
+    padding: 0;
+}
+
+.stats-container li {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.stat-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.stat-bar-container {
+    background-color: #e9ecef;
+    border-radius: 4px;
+    height: 12px;
+}
+
+.stat-bar {
+    background-color: #007bff;
+    height: 100%;
+    border-radius: 4px;
+}
+
+/* Perks Section */
+.perks-container {
+    margin-top: 20px;
+}
+
+.perks-container h2 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.perks-container ul {
+    list-style: none;
+    padding: 0;
+}
+
+.perk-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.perk-icon {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.perk-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.perk-name {
+    font-weight: bold;
+    margin: 0 0 5px 0;
+}
+
+.perk-description {
+    margin: 0;
+    font-size: 14px;
+    color: #555;
 }
