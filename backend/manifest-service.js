@@ -50,6 +50,7 @@ async function downloadManifest(manifestUrl) {
 
 // 3. Initialize the service
 async function initialize() {
+    let dbInitialized = false;
     try {
         console.log('Checking for Destiny Manifest updates...');
         const manifestUrl = await getManifestUrl();
@@ -71,18 +72,60 @@ async function initialize() {
             console.log('Manifest is up to date.');
         }
 
-        // Initialize the database connection
-        db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READONLY, (err) => {
+    } catch (error) {
+        console.error('Failed to check/update manifest:', error.message);
+        if (fs.existsSync(DB_PATH)) {
+            console.warn('Proceeding with existing local manifest data.');
+        } else {
+            // If there's no local data at all, we cannot proceed.
+            throw new Error('Manifest update failed and no local data is available. Cannot start service.');
+        }
+    } finally {
+        // Initialize the database connection if the file exists
+        if (fs.existsSync(DB_PATH)) {
+            db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READONLY, (err) => {
+                if (err) {
+                    console.error('Error opening database', err.message);
+                } else {
+                    console.log('Successfully connected to the manifest database.');
+                    dbInitialized = true;
+                }
+            });
+        } else {
+            console.error('Manifest database file not found. Service cannot function.');
+        }
+    }
+}
+
+// Helper function to get a single definition from the database
+function getDef(tableName, hash) {
+    return new Promise((resolve, reject) => {
+        if (!db) {
+            return reject(new Error('Database not initialized.'));
+        }
+
+        const query = `
+            SELECT json
+            FROM ${tableName}
+            WHERE id = ?
+        `;
+        
+        // The hash in the API is a signed 32-bit integer, but the id in the DB is unsigned.
+        // We need to convert it.
+        const id = parseInt(hash, 10);
+        const unsignedId = (id < 0) ? (id + 4294967296) : id;
+
+        db.get(query, [unsignedId], (err, row) => {
             if (err) {
-                console.error('Error opening database', err.message);
+                return reject(err);
+            }
+            if (row) {
+                resolve(JSON.parse(row.json));
             } else {
-                console.log('Successfully connected to the manifest database.');
+                resolve(null); // Not found
             }
         });
-
-    } catch (error) {
-        console.error('Failed to initialize manifest service:', error.message);
-    }
+    });
 }
 
 // 4. Search for an item by name
@@ -124,88 +167,71 @@ function searchItems(searchTerm) {
 }
 
 async function getItemByHash(hash) {
-    // 1. Get the base item definition
-    const item = await new Promise((resolve, reject) => {
-        if (!db) return reject(new Error('Database not initialized.'));
-        const id = new Int32Array([parseInt(hash, 10)])[0];
-        const query = `SELECT json FROM DestinyInventoryItemDefinition WHERE id = ?`;
-        db.get(query, [id], (err, row) => {
-            if (err) return reject(err);
-            resolve(row ? JSON.parse(row.json) : null);
-        });
-    });
+    const itemDef = await getDef('DestinyInventoryItemDefinition', hash);
+    if (!itemDef) return null;
 
-    if (!item) return null;
-    
-    // --- DEBUG START ---
-    console.log('--- 1. RAW WEAPON DATA ---');
-    // Log only the sockets part to avoid flooding the console
-    console.log(JSON.stringify(item.sockets, null, 2));
-    // --- DEBUG END ---
+    const item = {
+        hash: itemDef.hash,
+        displayProperties: itemDef.displayProperties,
+        itemTypeDisplayName: itemDef.itemTypeDisplayName,
+        flavorText: itemDef.flavorText,
+    };
 
-    // 2. Enrich stats with their definitions (omitted for brevity, no changes here)
-    if (item.stats && item.stats.stats) {
-        const statHashes = Object.keys(item.stats.stats);
-        if (statHashes.length > 0) {
-            const statDefs = await new Promise((resolve, reject) => {
-                const placeholders = statHashes.map(() => '?').join(',');
-                const query = `SELECT json FROM DestinyStatDefinition WHERE id IN (${placeholders})`;
-                const statIds = statHashes.map(h => new Int32Array([parseInt(h, 10)])[0]);
-                db.all(query, statIds, (err, rows) => {
-                    if (err) return reject(err);
-                    resolve(rows.map(r => JSON.parse(r.json)));
-                });
-            });
-            const statDefsMap = new Map(statDefs.map(def => [def.hash, def]));
-            for (const statHash in item.stats.stats) {
-                const statDef = statDefsMap.get(parseInt(statHash, 10));
-                if (statDef) {
-                    item.stats.stats[statHash].displayProperties = statDef.displayProperties;
-                }
+    // Get stats
+    if (itemDef.stats && itemDef.stats.stats) {
+        item.stats = { stats: {} };
+        for (const [statHash, stat] of Object.entries(itemDef.stats.stats)) {
+            const statDef = await getDef('DestinyStatDefinition', stat.statHash);
+            if (statDef) {
+                item.stats.stats[statHash] = {
+                    ...stat,
+                    displayProperties: statDef.displayProperties,
+                };
             }
         }
     }
 
-    // 3. Enrich with perk/plug definitions
-    if (item.sockets && item.sockets.socketEntries) {
-        const plugHashes = new Set();
-        item.sockets.socketEntries.forEach(entry => {
-            if (entry.singleInitialItemHash !== 0) {
-                plugHashes.add(entry.singleInitialItemHash);
+    // Get perks (both fixed and random)
+    if (itemDef.sockets && itemDef.sockets.socketEntries) {
+        item.perks = [];
+        item.randomPerkColumns = [];
+
+        // Iterate over ALL socket entries to find random perks, not just those in a specific category.
+        for (const socket of itemDef.sockets.socketEntries) {
+            // Get the single initial (fixed) perk for the main "perks" list (traits)
+            if (socket.singleInitialItemHash) {
+                const plug = await getDef('DestinyInventoryItemDefinition', socket.singleInitialItemHash);
+                // Only show items categorized as a "Weapon Perk" in the main perk list for clarity.
+                if (plug && plug.itemTypeDisplayName === 'Weapon Perk') {
+                    item.perks.push({
+                        hash: plug.hash,
+                        displayProperties: plug.displayProperties,
+                    });
+                }
             }
-            if (entry.reusablePlugItems) {
-                entry.reusablePlugItems.forEach(plug => plugHashes.add(plug.plugItemHash));
+
+            // Get the full list of random/reusable perks for the "random perks" section
+            const plugSetHash = socket.reusablePlugSetHash || socket.randomizedPlugSetHash;
+            if (plugSetHash) {
+                const plugSetDef = await getDef('DestinyPlugSetDefinition', plugSetHash);
+                // We are interested in sockets where there is more than one option.
+                if (plugSetDef && plugSetDef.reusablePlugItems && plugSetDef.reusablePlugItems.length > 1) {
+                    const perkColumn = [];
+                    for (const plugItem of plugSetDef.reusablePlugItems) {
+                        const perkDef = await getDef('DestinyInventoryItemDefinition', plugItem.plugItemHash);
+                        // Ensure the perk is valid, has an icon, and is not a shader.
+                        if (perkDef && perkDef.displayProperties && perkDef.displayProperties.hasIcon && perkDef.itemTypeDisplayName !== 'Shader' && perkDef.itemTypeDisplayName !== 'シェーダー') {
+                            perkColumn.push({
+                                hash: perkDef.hash,
+                                displayProperties: perkDef.displayProperties,
+                            });
+                        }
+                    }
+                    if (perkColumn.length > 0) {
+                        item.randomPerkColumns.push(perkColumn);
+                    }
+                }
             }
-        });
-        
-        // --- DEBUG START ---
-        console.log('--- 2. COLLECTED PLUG HASHES ---');
-        console.log(Array.from(plugHashes));
-        // --- DEBUG END ---
-
-        if (plugHashes.size > 0) {
-            const plugDefs = await new Promise((resolve, reject) => {
-                const placeholders = Array.from(plugHashes).map(() => '?').join(',');
-                const query = `SELECT json FROM DestinyInventoryItemDefinition WHERE id IN (${placeholders})`;
-                const plugIds = Array.from(plugHashes).map(h => new Int32Array([h])[0]);
-                db.all(query, plugIds, (err, rows) => {
-                    if (err) return reject(err);
-                    resolve(rows.map(r => JSON.parse(r.json)));
-                });
-            });
-            
-            // --- DEBUG START ---
-            console.log('--- 3. RAW PLUG DEFINITIONS FETCHED ---');
-            console.log(plugDefs.map(p => ({ name: p.displayProperties.name, itemType: p.itemTypeDisplayName })));
-            // --- DEBUG END ---
-
-            const perkTypeNames = ['特性', '内在効果', 'オリジン特性', 'フレーム'];
-            item.perks = plugDefs.filter(def => perkTypeNames.includes(def.itemTypeDisplayName));
-
-            // --- DEBUG START ---
-            console.log('--- 4. FINAL FILTERED PERKS ---');
-            console.log(item.perks.map(p => ({ name: p.displayProperties.name, itemType: p.itemTypeDisplayName })));
-            // --- DEBUG END ---
         }
     }
 

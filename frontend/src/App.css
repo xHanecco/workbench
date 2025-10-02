@@ -122,112 +122,138 @@ body {
 }
 
 .detail-page {
-    max-width: 700px;
-    margin: 0 auto;
+    padding-top: 20px;
 }
 
-.detail-header {
+.weapon-card, .stats-card, .barrels-card, .random-perks-card {
+    margin-bottom: 20px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.weapon-card .card-header,
+.stats-card .card-header,
+.barrels-card .card-header,
+.random-perks-card .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
     display: flex;
-    gap: 20px;
     align-items: center;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #eee;
+    gap: 15px;
+}
+
+.weapon-card .card-header {
+    padding: 15px;
+}
+
+.stats-card .card-header h2,
+.barrels-card .card-header h2,
+.random-perks-card .card-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
 }
 
 .detail-icon {
-    width: 96px;
-    height: 96px;
+    width: 64px;
+    height: 64px;
 }
 
 .detail-title h1 {
     margin: 0;
+    font-size: 1.75rem;
 }
+
 .detail-title p {
-    margin: 5px 0 0 0;
-    font-size: 18px;
-    color: #555;
+    margin: 0;
+    font-size: 1rem;
+    color: #6c757d;
 }
 
-.detail-flavor-text {
-    margin: 20px 0;
-}
-
-.stats-container h2 {
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-}
-
-.stats-container ul {
-    list-style: none;
-    padding: 0;
-}
-
-.stats-container li {
-    display: flex;
-    flex-direction: column;
-    padding: 8px 0;
-    border-bottom: 1px solid #f5f5f5;
-}
-
-.stat-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 5px;
-}
-
-.stat-bar-container {
-    background-color: #e9ecef;
-    border-radius: 4px;
-    height: 12px;
-}
-
-.stat-bar {
-    background-color: #007bff;
-    height: 100%;
-    border-radius: 4px;
-}
-
-/* Perks Section */
 .perks-container {
-    margin-top: 20px;
+    margin-top: 15px;
 }
 
 .perks-container h2 {
+    font-size: 1.2rem;
     border-bottom: 1px solid #eee;
     padding-bottom: 10px;
-}
-
-.perks-container ul {
-    list-style: none;
-    padding: 0;
+    margin-bottom: 15px;
 }
 
 .perk-item {
     display: flex;
     align-items: flex-start;
     gap: 15px;
-    padding: 10px 0;
-    border-bottom: 1px solid #f5f5f5;
+    margin-bottom: 15px;
 }
 
 .perk-icon {
     width: 48px;
     height: 48px;
-    flex-shrink: 0;
 }
 
-.perk-info {
+.perk-info .perk-name {
+    font-weight: bold;
+}
+
+.perk-info .perk-description {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.stats-list {
     display: flex;
     flex-direction: column;
+    gap: 10px;
 }
 
-.perk-name {
+.stat-item {
+    display: grid;
+    grid-template-columns: 120px 1fr 40px;
+    gap: 10px;
+    align-items: center;
+}
+
+.stat-name {
+    font-size: 0.9rem;
+    text-align: right;
+}
+
+.stat-value {
     font-weight: bold;
-    margin: 0 0 5px 0;
+    text-align: left;
 }
 
-.perk-description {
-    margin: 0;
-    font-size: 14px;
-    color: #555;
+.stat-progress-bar {
+    height: 12px;
+}
+
+/* Random Perks Styles */
+.random-perks-body {
+    display: flex;
+    gap: 1rem; /* Spacing between columns */
+    overflow-x: auto; /* Allow horizontal scrolling if many columns */
+    padding: 1rem;
+}
+
+.perk-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* Spacing between perks in a column */
+    padding-right: 1rem;
+    border-right: 1px solid #eee; /* Separator line */
+}
+
+.perk-column:last-child {
+    border-right: none;
+    padding-right: 0;
+}
+
+.random-perk-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    background-color: #222;
+    cursor: pointer;
 }
